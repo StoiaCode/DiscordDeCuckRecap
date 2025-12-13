@@ -127,10 +127,6 @@ That's it. The script will:
 
 **Wait for it to finish.** Depending on how much you talk, this might take a few minutes. The script will show you progress as it goes.
 
-### What If I Don't Have Python and the Batch File Doesn't Work?
-
-The `start.bat` file should offer to download Python for you. Just say "Yes" when it asks. It downloads a portable version (about 30MB) that doesn't require installation.
-
 If you're on Mac or Linux, or the .bat file doesnt work, you'll need to run the Python scripts directly:
 ```bash
 python3 ExtractData_v3.py
