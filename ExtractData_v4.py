@@ -367,19 +367,19 @@ class DiscordAnalyzer:
                             print(f"      Extracted username: {username}")
                         
                         if username and channel_data.get("type") == "DM":
-                            # For regular DMs, map the username to the other user (not USER_ID)
+                            # For regular DMs, map the username to the other user (not self)
                             other_user_id = None
                             for recipient_id in recipients:
-                                if recipient_id != USER_ID:
+                                if recipient_id != self.user_id:
                                     other_user_id = recipient_id
                                     break
-                            
+
                             if other_user_id:
                                 self.store_user_mapping(other_user_id, username)
                                 if self.verbose:
                                     print(f"      ✅ Mapped user {other_user_id} -> {username}")
                             elif self.verbose:
-                                print(f"      ⚠️  No other_user_id found (USER_ID={USER_ID})")
+                                print(f"      ⚠️  No other_user_id found (user_id={self.user_id})")
                         elif self.verbose and not username:
                             print(f"      ⚠️  Username extraction failed from label: {label}")
                     elif self.verbose:
