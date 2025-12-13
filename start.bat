@@ -163,6 +163,45 @@ if not exist "Messages\" (
     echo.
 )
 
+:: Prompt for Discord User ID
+echo =====================================
+echo   Your Discord User ID
+echo =====================================
+echo.
+echo To get your Discord User ID:
+echo   1. Open Discord
+echo   2. Go to Settings (gear icon)
+echo   3. Go to Advanced
+echo   4. Enable "Developer Mode"
+echo   5. Right-click your username anywhere
+echo   6. Click "Copy User ID"
+echo.
+set /p USER_ID="Enter your Discord User ID: "
+
+:: Validate that it's not empty and is numeric
+if "%USER_ID%"=="" (
+    echo.
+    echo [X] User ID cannot be empty!
+    echo.
+    pause
+    exit /b 1
+)
+
+:: Check if it's roughly the right format (18-20 digits)
+echo %USER_ID%| findstr /r "^[0-9]{17,}$" >nul
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [!] WARNING: That doesn't look like a valid Discord User ID
+    echo     Discord User IDs are typically 18-20 digit numbers
+    echo.
+    choice /C YN /M "Continue anyway"
+    if errorlevel 2 exit /b 1
+)
+
+echo.
+echo [OK] Using User ID: %USER_ID%
+echo.
+
 :: Run the analyzer
 echo =====================================
 echo   Step 1: Analyzing Discord Data
@@ -171,7 +210,7 @@ echo.
 echo [*] Running analyzer...
 echo.
 
-"%PYTHON_CMD%" "%ANALYZER_SCRIPT%"
+"%PYTHON_CMD%" "%ANALYZER_SCRIPT%" --user-id "%USER_ID%"
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
@@ -202,7 +241,7 @@ echo.
 echo [*] Creating website...
 echo.
 
-"%PYTHON_CMD%" "%WEBSITE_SCRIPT%" --serve
+"%PYTHON_CMD%" "%WEBSITE_SCRIPT%" --user-id "%USER_ID%" --serve
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
