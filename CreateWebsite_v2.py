@@ -463,9 +463,48 @@ def generate_html(stats, emoji_map=None):
             font-size: 0.8em;
             opacity: 0.8;
         }}
+
+        /* Emoji confetti rain */
+        .confetti-container {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }}
+
+        .confetti {{
+            position: absolute;
+            top: -50px;
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            opacity: 0.7;
+            animation: confetti-fall linear infinite;
+        }}
+
+        @keyframes confetti-fall {{
+            0% {{
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.7;
+            }}
+            100% {{
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0.3;
+            }}
+        }}
+
+        .container {{
+            position: relative;
+            z-index: 1;
+        }}
     </style>
 </head>
 <body>
+    <div class="confetti-container" id="confetti"></div>
     <div class="container">
         <header>
             <h1>📊 Discord Stats {TARGET_YEAR}</h1>
@@ -634,16 +673,60 @@ def generate_html(stats, emoji_map=None):
     html += f"""
             </div>
         </div>
-        
+
         <footer>
             <p>Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
             <p>Discord GDPR Data Analysis</p>
         </footer>
     </div>
-</body>
+"""
+
+    # Build list of found emoji images for confetti
+    found_emoji_paths = []
+    for emote in stats['emotes'][:30]:
+        emote_id = emote.get('id', '')
+        image_path = emoji_map.get(emote_id, '')
+        if image_path:
+            found_emoji_paths.append(image_path)
+
+    # Add confetti JavaScript if we have emoji images
+    if found_emoji_paths:
+        emoji_json = json.dumps(found_emoji_paths)
+        html += f"""
+    <script>
+        (function() {{
+            const emojiPaths = {emoji_json};
+            const container = document.getElementById('confetti');
+            const confettiCount = 25;
+
+            function createConfetti() {{
+                for (let i = 0; i < confettiCount; i++) {{
+                    setTimeout(() => {{
+                        const img = document.createElement('img');
+                        img.className = 'confetti';
+                        img.src = emojiPaths[Math.floor(Math.random() * emojiPaths.length)];
+                        img.style.left = Math.random() * 100 + '%';
+                        img.style.animationDuration = (8 + Math.random() * 12) + 's';
+                        img.style.animationDelay = (Math.random() * 5) + 's';
+                        container.appendChild(img);
+
+                        // Remove and recreate after animation
+                        img.addEventListener('animationiteration', () => {{
+                            img.style.left = Math.random() * 100 + '%';
+                        }});
+                    }}, i * 200);
+                }}
+            }}
+
+            createConfetti();
+        }})();
+    </script>
+"""
+
+    html += """</body>
 </html>
 """
-    
+
     return html
 
 def save_html(html, filename):
