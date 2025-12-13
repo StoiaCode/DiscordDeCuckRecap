@@ -18,7 +18,39 @@ TARGET_YEAR = 2025  # Change this for future years!
 DB_FILE = "discord_analysis.db"
 OUTPUT_FILE = "discord_stats.html"
 PORT = 8080
+SERVERS_DIR = "./Servers"  # Discord GDPR export servers folder
 # =========================================
+
+
+def find_emoji_images(servers_dir=SERVERS_DIR):
+    """
+    Search for emoji images in the Servers folder structure.
+    Returns a dict mapping emote_id -> relative file path
+
+    Emoji files are typically at: Servers/<server_id>/emoji/<emote_id>.<ext>
+    """
+    emoji_map = {}
+
+    if not os.path.exists(servers_dir):
+        return emoji_map
+
+    # Recursively search for folders containing an "emoji" subfolder
+    for root, dirs, files in os.walk(servers_dir):
+        if 'emoji' in dirs:
+            emoji_folder = os.path.join(root, 'emoji')
+            # Look for emoji files in this folder
+            try:
+                for emoji_file in os.listdir(emoji_folder):
+                    # Emoji files are named <emote_id>.<ext> (usually .png or .gif)
+                    name_parts = emoji_file.rsplit('.', 1)
+                    if len(name_parts) == 2:
+                        emote_id = name_parts[0]
+                        file_path = os.path.join(emoji_folder, emoji_file)
+                        emoji_map[emote_id] = file_path
+            except OSError:
+                continue
+
+    return emoji_map
 
 def get_stats_data(db_path, user_id):
     """Extract all statistics from the database"""
@@ -112,16 +144,16 @@ def get_stats_data(db_path, user_id):
     
     stats['group_dms'] = group_dms_data
     
-    # Top emotes
+    # Top emotes (include emote_id for image lookup)
     cursor.execute('''
-        SELECT emote_name, usage_count
+        SELECT emote_id, emote_name, usage_count
         FROM emotes
         ORDER BY usage_count DESC
         LIMIT 50
     ''')
     stats['emotes'] = [
-        {'name': name, 'count': count}
-        for name, count in cursor.fetchall()
+        {'id': emote_id, 'name': name, 'count': count}
+        for emote_id, name, count in cursor.fetchall()
     ]
     
     # File types
@@ -150,9 +182,11 @@ def get_stats_data(db_path, user_id):
     conn.close()
     return stats
 
-def generate_html(stats):
+def generate_html(stats, emoji_map=None):
     """Generate the HTML page with stats"""
-    
+    if emoji_map is None:
+        emoji_map = {}
+
     max_server_count = max([s['count'] for s in stats['servers']], default=1)
     max_dm_count = max([d['count'] for d in stats['dms']], default=1)
     max_group_dm_count = max([g['count'] for g in stats['group_dms']], default=1)
@@ -331,7 +365,19 @@ def generate_html(stats):
             font-size: 1.1em;
             color: #333;
         }}
-        
+
+        .emote-display {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+
+        .emote-image {{
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }}
+
         .emote-count {{
             background: #667eea;
             color: white;
@@ -545,7 +591,23 @@ def generate_html(stats):
 """
     
     for emote in stats['emotes'][:30]:
-        html += f"""
+        emote_id = emote.get('id', '')
+        image_path = emoji_map.get(emote_id, '')
+
+        if image_path:
+            # Show image alongside name
+            html += f"""
+                <div class="emote-item">
+                    <div class="emote-display">
+                        <img class="emote-image" src="{image_path}" alt=":{emote['name']}:" title=":{emote['name']}:">
+                        <span class="emote-name">:{emote['name']}:</span>
+                    </div>
+                    <span class="emote-count">{emote['count']:,}</span>
+                </div>
+"""
+        else:
+            # Text-only fallback
+            html += f"""
                 <div class="emote-item">
                     <span class="emote-name">:{emote['name']}:</span>
                     <span class="emote-count">{emote['count']:,}</span>
@@ -640,12 +702,19 @@ if __name__ == "__main__":
         exit(1)
     
     print("📊 Generating Discord stats website...")
-    
+
+    # Find emoji images from Servers folder (if it exists)
+    emoji_map = find_emoji_images()
+    if emoji_map:
+        print(f"🎨 Found {len(emoji_map)} emoji images in Servers folder")
+    else:
+        print("ℹ️  No Servers folder or emoji images found - emotes will display as text only")
+
     stats = get_stats_data(args.db, args.user_id)
     if not stats:
         exit(1)
-    
-    html = generate_html(stats)
+
+    html = generate_html(stats, emoji_map)
     save_html(html, args.output)
     
     if args.serve:
