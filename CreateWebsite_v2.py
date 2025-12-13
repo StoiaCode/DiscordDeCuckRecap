@@ -52,22 +52,34 @@ def get_stats_data(db_path, user_id):
         for name, count, att in cursor.fetchall()
     ]
     
-    # DM stats (top 20) - filter out user's own ID
+    # DM stats (top 20) - filter out user's own ID and lookup usernames
     cursor.execute('''
         SELECT recipients, message_count, messages_with_attachments
-        FROM channels 
+        FROM channels
         WHERE channel_type = 'DM'
         ORDER BY message_count DESC
         LIMIT 20
     ''')
-    stats['dms'] = [
-        {
-            'user_id': json.loads(rec)[0] if json.loads(rec)[0] != user_id else json.loads(rec)[1],
+
+    dms_data = []
+    for rec, count, att in cursor.fetchall():
+        recipients = json.loads(rec)
+        # Get the other user's ID (not our own)
+        other_user_id = recipients[0] if recipients[0] != user_id else recipients[1] if len(recipients) > 1 else recipients[0]
+
+        # Look up username
+        cursor.execute('SELECT username FROM users WHERE user_id = ?', (other_user_id,))
+        result = cursor.fetchone()
+        username = result[0] if result else None
+
+        dms_data.append({
+            'user_id': other_user_id,
+            'username': username,
             'count': count,
             'attachments': att
-        }
-        for rec, count, att in cursor.fetchall()
-    ]
+        })
+
+    stats['dms'] = dms_data
     
     # Group DM stats - with username lookup
     cursor.execute('''
