@@ -3,12 +3,57 @@ setlocal enabledelayedexpansion
 title Discord Stats Analyzer
 color 0B
 
+:: Get the directory where the batch file is located (must be set early)
+set SCRIPT_DIR=%~dp0
+
 :: Configuration
 set PYTHON_VERSION=3.11.9
 set PYTHON_EMBED_URL=https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip
-set PYTHON_DIR=python_portable
+set PYTHON_DIR=%SCRIPT_DIR%python_portable
 set PYTHON_EXE=%PYTHON_DIR%\python.exe
 set GET_PIP_URL=https://bootstrap.pypa.io/get-pip.py
+
+:: Extract major.minor version for _pth file (e.g., 3.11.9 -> 311)
+for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do set PYTHON_PTH_VERSION=%%a%%b
+
+:: Help option
+if "%~1"=="--help" (
+    echo Discord GDPR Data Analyzer - Command Line Options
+    echo.
+    echo Usage: start.bat [option]
+    echo.
+    echo Options:
+    echo   --help               Show this help message
+    echo   --debug-portable     Force using portable Python even if system Python exists
+    echo   --reinstall-portable Delete and reinstall portable Python
+    echo.
+    echo The portable Python installation is located at:
+    echo   %PYTHON_DIR%
+    echo.
+    exit /b 0
+)
+
+:: Debug mode - set to 1 to force portable Python even if system Python exists
+:: Can also be enabled by passing --debug-portable as first argument
+set DEBUG_PORTABLE=0
+if "%~1"=="--debug-portable" (
+    set DEBUG_PORTABLE=1
+    echo [DEBUG] Forcing portable Python mode
+    echo [DEBUG] Portable Python directory: %PYTHON_DIR%
+    echo.
+)
+if "%~1"=="--reinstall-portable" (
+    set DEBUG_PORTABLE=1
+    echo [DEBUG] Reinstalling portable Python...
+    echo [DEBUG] Removing: %PYTHON_DIR%
+    if exist "%PYTHON_DIR%" (
+        rmdir /s /q "%PYTHON_DIR%"
+        echo [DEBUG] Portable Python directory removed
+    ) else (
+        echo [DEBUG] Portable Python directory does not exist
+    )
+    echo.
+)
 
 echo.
 echo =====================================
@@ -16,7 +61,13 @@ echo   Discord GDPR Data Analyzer
 echo =====================================
 echo.
 
-:: Check if Python is already available (system or portable)
+:: Check for portable Python first if debug mode is enabled
+if %DEBUG_PORTABLE% EQU 1 (
+    echo [DEBUG] Skipping system Python check
+    goto :check_portable
+)
+
+:: Check if Python is already available in system PATH
 where python >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     echo [OK] Python found in system PATH
@@ -24,10 +75,18 @@ if %ERRORLEVEL% EQU 0 (
     goto :check_scripts
 )
 
+:check_portable
 if exist "%PYTHON_EXE%" (
-    echo [OK] Portable Python found
-    set PYTHON_CMD=%PYTHON_EXE%
-    goto :check_scripts
+    :: Verify portable Python actually works
+    "%PYTHON_EXE%" --version >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        echo [OK] Portable Python found and working
+        set PYTHON_CMD=%PYTHON_EXE%
+        goto :check_scripts
+    ) else (
+        echo [!] Portable Python found but not working, will reinstall...
+        rmdir /s /q "%PYTHON_DIR%"
+    )
 )
 
 :: Python not found, offer to download portable version
@@ -88,19 +147,58 @@ del "%PYTHON_DIR%\python.zip"
 
 :: Enable pip in embedded Python by uncommenting import site
 echo [*] Configuring Python...
-powershell -Command "& {(Get-Content '%PYTHON_DIR%\python311._pth') -replace '#import site', 'import site' | Set-Content '%PYTHON_DIR%\python311._pth'}"
+set PTH_FILE=%PYTHON_DIR%\python%PYTHON_PTH_VERSION%._pth
+if not exist "%PTH_FILE%" (
+    echo [X] Could not find %PTH_FILE%
+    echo     Listing files in %PYTHON_DIR%:
+    dir /b "%PYTHON_DIR%\*.pth" 2>nul || echo     No .pth files found
+    echo.
+    pause
+    exit /b 1
+)
+powershell -Command "& {(Get-Content '%PTH_FILE%') -replace '#import site', 'import site' | Set-Content '%PTH_FILE%'}"
 
 :: Download and install pip
 echo [*] Installing pip...
 powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%GET_PIP_URL%' -OutFile '%PYTHON_DIR%\get-pip.py'}"
-"%PYTHON_EXE%" "%PYTHON_DIR%\get-pip.py" --no-warn-script-location >nul 2>&1
+
+if not exist "%PYTHON_DIR%\get-pip.py" (
+    echo [X] Failed to download get-pip.py
+    echo.
+    pause
+    exit /b 1
+)
+
+"%PYTHON_EXE%" "%PYTHON_DIR%\get-pip.py" --no-warn-script-location
+if %ERRORLEVEL% NEQ 0 (
+    echo [X] Failed to install pip
+    echo.
+    pause
+    exit /b 1
+)
 del "%PYTHON_DIR%\get-pip.py"
+
+:: Verify pip works
+"%PYTHON_EXE%" -m pip --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [X] Pip installation verification failed
+    echo.
+    pause
+    exit /b 1
+)
 
 echo [OK] Portable Python installed successfully!
 echo.
 set PYTHON_CMD=%PYTHON_EXE%
 
 :check_scripts
+:: Show debug info about Python being used
+if %DEBUG_PORTABLE% EQU 1 (
+    echo [DEBUG] Using Python command: %PYTHON_CMD%
+    for /f "tokens=*" %%v in ('"%PYTHON_CMD%" --version 2^>^&1') do echo [DEBUG] Python version: %%v
+    echo.
+)
+
 echo [*] Checking for required scripts...
 echo.
 
