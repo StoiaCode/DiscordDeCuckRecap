@@ -187,8 +187,8 @@ if "%USER_ID%"=="" (
     exit /b 1
 )
 
-:: Check if it's roughly the right format (18-20 digits)
-echo %USER_ID%| findstr /r "^[0-9]{17,}$" >nul
+:: Check if it's roughly the right format (17+ digits, numeric only)
+echo %USER_ID%| powershell -Command "$input = $input.Trim(); if ($input -match '^\d{17,}$') { exit 0 } else { exit 1 }"
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [!] WARNING: That doesn't look like a valid Discord User ID
