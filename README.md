@@ -78,19 +78,15 @@ Discord_Package_Extracted/
 
 ---
 
-## Step 4: Update Your User ID
+## Step 5: Run the Analyzer
 
-**⚠️ CRITICAL STEP - DON'T SKIP THIS**
+### The Easy Way (Recommended)
 
-Open `ExtractData_v3.py` and `CreateWebsite_v1.py` in any text editor (Notepad works fine). At the very top, you'll see this line:
+**Just double-click `start.bat`**
 
-```python
-USER_ID = "YOUR_USER_ID_HERE"  # Replace with your Discord user ID
-```
+The script will ask you for your Discord UserID, paste it in with a right click.
 
-You need to replace that with **YOUR** Discord User ID.
-
-### How to Get Your Discord User ID:
+#### How to Get Your Discord User ID:
 
 1. Open Discord
 2. Go to **User Settings** (gear icon ⚙️)
@@ -99,24 +95,6 @@ You need to replace that with **YOUR** Discord User ID.
 5. Close settings
 6. **Right-click your own username** anywhere (in a chat, server member list, your profile, etc.)
 7. Click **"Copy User ID"** at the bottom
-8. Paste that number into the script where it says `USER_ID = "..."`
-
-**Example:**
-```python
-USER_ID = "123456789012345678"  ← Replace with YOUR ID
-```
-
-Save the file. Do this for BOTH files. 
-
-**Still confused?** Google "how to get my discord user id" - there are tons of guides with pictures.
-
----
-
-## Step 5: Run the Analyzer
-
-### The Easy Way (Recommended)
-
-**Just double-click `start.bat`**
 
 That's it. The script will:
 1. Check if you have Python installed
@@ -129,8 +107,8 @@ That's it. The script will:
 
 If you're on Mac or Linux, or the .bat file doesnt work, you'll need to run the Python scripts directly:
 ```bash
-python3 ExtractData_v3.py
-python3 CreateWebsite_v1.py --serve
+python3 ExtractData_v4.py --user-id <YOUR-USER-ID>
+python3 CreateWebsite_v1.py --user-id <YOUR-USER-ID> --serve
 ```
 
 ---
@@ -172,7 +150,7 @@ Then run it again.
 After running the analyzer, you'll have a `discord_analysis.db` file. You can explore it:
 
 ```bash
-python ExtractData_v3.py --query
+python ExtractData_v3.py --user-id <YOUR-USER-ID> --query
 ```
 
 This lets you run SQL queries to dig deeper into your data.
