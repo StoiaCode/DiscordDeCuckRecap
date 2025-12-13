@@ -1,4 +1,6 @@
 # Discord Data Analyzer - Your Own Year in Review
+<img width="1423" height="367" alt="image" src="https://github.com/user-attachments/assets/71e6fbff-573b-46e3-9729-200e38473a55" />
+
 
 ## So you have been cucked by Discord's Recap Feature? 
 
