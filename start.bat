@@ -97,7 +97,7 @@ echo This script can download a portable Python installation
 echo that doesn't require admin rights or affect your system.
 echo.
 echo Portable Python will be installed to: %PYTHON_DIR%
-echo Size: ~30 MB
+echo Size: ~40 MB
 echo.
 choice /C YN /M "Download and install portable Python"
 if errorlevel 2 goto :no_python
